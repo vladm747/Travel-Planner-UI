@@ -1,51 +1,27 @@
-import React, { useState } from 'react';
-import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Typography,
-    Grid
-} from '@mui/material';
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import TripList from "./TripList.tsx";
 
-interface Trip {
-    id: number;
-    title: string;
-    description: string;
-}
-
-export default function Trip() {
-    const [trips, setTrips] = useState<Trip[]>([]);
-
-    const handleCreateTrip = () => {
-        const newTrip: Trip = {
-            id: trips.length + 1,
-            title: `Trip #${trips.length + 1}`,
-            description: `This is a description for trip #${trips.length + 1}`,
-        };
-        setTrips(prev => [...prev, newTrip]);
-    };
-
+function Trip() {
     return (
-        <Box sx={{ p: 4 }}>
-            <Button variant="contained" color="primary" onClick={handleCreateTrip}>
-                Create Trip
-            </Button>
-
-            <Grid container spacing={2} sx={{ mt: 2 }}>
-                {trips.map((trip) => (
-                    <Grid item xs={12} sm={6} md={4} key={trip.id}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant="h6">{trip.title}</Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {trip.description}
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
+        <Box sx={{
+            minHeight: 'calc(100vh - 64px)', // Full height minus AppBar height
+            width: '100%',
+            margin: 0, // Remove any default margins
+            padding: 0, // Remove padding to make it truly full width
+            backgroundColor: '#f5f5f5' // Optional background color
+        }}>
+            <Typography variant="h4" align="center" sx={{ pt: 4, pb: 4 }}>
+                Список подорожей
+            </Typography>
+            <Box display="flex" justifyContent="center" mt={2}>
+                {/* Your trip content will go here */}
+                <Typography variant="body1">
+                    <TripList/>
+                </Typography>
+            </Box>
         </Box>
-    );
+    )
 }
+
+export default Trip
