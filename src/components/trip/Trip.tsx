@@ -11,9 +11,6 @@ function Trip() {
             padding: 0, // Remove padding to make it truly full width
             backgroundColor: '#f5f5f5' // Optional background color
         }}>
-            <Typography variant="h4" align="center" sx={{ pt: 4, pb: 4 }}>
-                Список подорожей
-            </Typography>
             <Box display="flex" justifyContent="center" mt={2}>
                 {/* Your trip content will go here */}
                 <Typography variant="body1">
