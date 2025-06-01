@@ -16,12 +16,12 @@ import {
     IconButton,
     Chip
 } from "@mui/material";
-import type {CreateTripDto} from "../../dto/CreateTripDto.ts";
+import type {CreateTripDto} from "../../dto/trip/CreateTripDto.ts";
 import {Link} from "react-router-dom";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import {CreateTrip, GetAllTripsAsync} from "../../services/TripService.ts";
-import type {TripDto} from "../../dto/TripDto.ts";
+import type {TripDto} from "../../dto/trip/TripDto.ts";
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';

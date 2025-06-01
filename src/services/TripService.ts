@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type {CreateTripDto} from "../dto/CreateTripDto.ts";
+import type {CreateTripDto} from "../dto/trip/CreateTripDto.ts";
 
 const api = axios.create({
     baseURL: `http://localhost:8080/api/v1/trips`, // Replace with your backend URL
