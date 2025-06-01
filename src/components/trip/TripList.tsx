@@ -28,6 +28,15 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 
+
+const testTrips: TripDto[] = [
+    { Id: 1, Name: 'Вихідні у Кийові', City: 'Kyiv' },
+    { Id: 2, Name: 'Business Trip to Berlin', City: 'Berlin' },
+    { Id: 3, Name: 'Vacation in Rome', City: 'Rome' },
+    { Id: 4, Name: 'Explore Tokyo', City: 'Tokyo' },
+    { Id: 5, Name: 'Beach Escape', City: 'Barcelona' }
+];
+
 function TripList() {
     const [trips, setTrips] = useState<TripDto[]>([]);
     const [createTripDto, setCreateTripDto] = useState<CreateTripDto>({Name: '', City: ''});
@@ -45,6 +54,8 @@ function TripList() {
 
     useEffect(() => {
         fetchData();
+        //for test only
+        setTrips(testTrips);
     }, []);
 
     const handleCreateTrip = async () => {
