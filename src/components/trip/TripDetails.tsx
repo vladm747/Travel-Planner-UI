@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Container,
     Typography,
@@ -44,6 +44,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import MapIcon from '@mui/icons-material/Map';
 
 // Import services
 import { GetPlacesNearbyAsync, AddPlaceToTrip, GetAllPlacesByTripAsync, DeletePlace } from '../../services/PlaceService';
@@ -61,10 +62,67 @@ import type { AccommodationResponseDto } from '../../dto/acommodation/Accommodat
 import type { MealBreakRequestDto } from '../../dto/mealBreak/MealBreakRequestDto';
 import type { MealBreakResponseDto } from '../../dto/mealBreak/MealBreakResponseDto';
 import type { PlaceResponseDto } from '../../dto/places/PlaceResponseDto';
+import type { GoogleReviewDto } from '../dto/google/GoogleReviewDto';
+
+// Google Maps types (you may need to install @types/google.maps)
+declare global {
+    interface Window {
+        google: any;
+        initMap: () => void;
+    }
+}
+
+const sampleGooglePlaces: GooglePlaceDto[] = [
+    {
+        placeType: PlaceType.CAFE,
+        name: 'Кав\'ярня Aroma',
+        description: 'Затишне місце з ароматною кавою та десертами.',
+        rating: 4.5,
+        openingTime: '08:00:00',
+        closingTime: '20:00:00',
+        reviews: [
+            { rating: 5, comment: 'Смачна кава та приємний персонал', timeDescription: '2 дні тому' },
+            { rating: 4, comment: 'Трохи шумно, але кава супер', timeDescription: '1 тиждень тому' }
+        ],
+        latitude: 50.4501,
+        longitude: 30.5234
+    },
+    {
+        placeType: PlaceType.MUSEUM,
+        name: 'Національний музей історії України',
+        description: 'Музей із великою колекцією історичних експонатів.',
+        rating: 4.8,
+        openingTime: '10:00:00',
+        closingTime: '18:00:00',
+        reviews: [
+            { rating: 5, comment: 'Цікаві виставки та гід', timeDescription: '3 дні тому' },
+            { rating: 4, comment: 'Недостатньо парковки', timeDescription: '5 днів тому' }
+        ],
+        latitude: 50.4525,
+        longitude: 30.5165
+    },
+    {
+        placeType: PlaceType.PARK,
+        name: 'Центральний парк',
+        description: 'Велика зелена зона для прогулянок та відпочинку.',
+        rating: 4.6,
+        openingTime: '06:00:00',
+        closingTime: '22:00:00',
+        reviews: [
+            { rating: 5, comment: 'Чисто та просторо', timeDescription: '1 день тому' },
+            { rating: 4, comment: 'Бракує дитячих майданчиків', timeDescription: '1 тиждень тому' }
+        ],
+        latitude: 50.4600,
+        longitude: 30.5200
+    }
+];
 
 function TripDetails() {
     const location = useLocation();
     const trip = location.state as TripDto;
+    const mapRef = useRef<HTMLDivElement>(null);
+    const googleMapRef = useRef<any>(null);
+    const markersRef = useRef<any[]>([]);
 
     // State for data
     const [places, setPlaces] = useState<PlaceResponseDto[]>([]);
@@ -75,6 +133,9 @@ function TripDetails() {
     const [addPlaceModalOpen, setAddPlaceModalOpen] = useState(false);
     const [addAccommodationModalOpen, setAddAccommodationModalOpen] = useState(false);
     const [addMealBreakModalOpen, setAddMealBreakModalOpen] = useState(false);
+
+    // View state for places modal
+    const [showMapView, setShowMapView] = useState(false);
 
     // Add Place modal state
     const [selectedPlaceType, setSelectedPlaceType] = useState<PlaceType>(PlaceType.CAFE);
@@ -101,12 +162,38 @@ function TripDetails() {
         endTime: '09:00'
     });
 
+    // Load Google Maps script
+    useEffect(() => {
+        const loadGoogleMaps = () => {
+            if (window.google) return;
+
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=maps,marker&v=weekly`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        };
+
+        loadGoogleMaps();
+    }, []);
+
+    useEffect(() => {
+        setNearbyPlaces(sampleGooglePlaces);
+    }, []);
+
     // Load data on component mount
     useEffect(() => {
         if (trip?.Id) {
             loadTripData();
         }
     }, [trip]);
+
+    // Initialize map when modal opens and places are available
+    useEffect(() => {
+        if (addPlaceModalOpen && showMapView && nearbyPlaces.length > 0) {
+            initializeMap();
+        }
+    }, [addPlaceModalOpen, showMapView, nearbyPlaces]);
 
     const loadTripData = async () => {
         try {
@@ -120,6 +207,52 @@ function TripDetails() {
             setMealBreaks(mealBreaksData);
         } catch (error) {
             console.error('Error loading trip data:', error);
+        }
+    };
+
+    const initializeMap = async () => {
+        if (!mapRef.current || !window.google || nearbyPlaces.length === 0) return;
+
+        try {
+            // Import required libraries
+            const { Map } = await window.google.maps.importLibrary("maps");
+            const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker");
+
+            // Clear existing markers
+            markersRef.current.forEach(marker => {
+                if (marker.setMap) marker.setMap(null);
+            });
+            markersRef.current = [];
+
+            // Calculate center point from nearby places
+            const avgLat = nearbyPlaces.reduce((sum, place) => sum + place.latitude, 0) / nearbyPlaces.length;
+            const avgLng = nearbyPlaces.reduce((sum, place) => sum + place.longitude, 0) / nearbyPlaces.length;
+
+            // Create map
+            googleMapRef.current = new Map(mapRef.current, {
+                zoom: 13,
+                center: { lat: avgLat, lng: avgLng },
+                mapId: 'TRIP_PLACES_MAP_ID', // You'll need to create this in Google Cloud Console
+            });
+
+            // Add markers for each place
+            nearbyPlaces.forEach((place, index) => {
+                const marker = new AdvancedMarkerElement({
+                    map: googleMapRef.current,
+                    position: { lat: place.latitude, lng: place.longitude },
+                    title: place.name,
+                });
+
+                // Add click listener to marker
+                marker.addListener('click', () => {
+                    handleAddPlaceToTrip(place);
+                });
+
+                markersRef.current.push(marker);
+            });
+
+        } catch (error) {
+            console.error('Error initializing map:', error);
         }
     };
 
@@ -211,6 +344,19 @@ function TripDetails() {
         } catch (error) {
             console.error('Error deleting meal break:', error);
         }
+    };
+
+    const handlePlaceModalClose = () => {
+        setAddPlaceModalOpen(false);
+        setShowMapView(false);
+        // Clean up map and markers
+        if (googleMapRef.current) {
+            googleMapRef.current = null;
+        }
+        markersRef.current.forEach(marker => {
+            if (marker.setMap) marker.setMap(null);
+        });
+        markersRef.current = [];
     };
 
     if (!trip) {
@@ -407,8 +553,29 @@ function TripDetails() {
                 </Grid>
 
                 {/* Add Place Modal */}
-                <Dialog open={addPlaceModalOpen} onClose={() => setAddPlaceModalOpen(false)} maxWidth="md" fullWidth>
-                    <DialogTitle>Додати місце до подорожі</DialogTitle>
+                <Dialog open={addPlaceModalOpen} onClose={handlePlaceModalClose} maxWidth="lg" fullWidth>
+                    <DialogTitle>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            Додати місце до подорожі
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                    variant={!showMapView ? "contained" : "outlined"}
+                                    size="small"
+                                    onClick={() => setShowMapView(false)}
+                                >
+                                    Список
+                                </Button>
+                                <Button
+                                    variant={showMapView ? "contained" : "outlined"}
+                                    size="small"
+                                    startIcon={<MapIcon />}
+                                    onClick={() => setShowMapView(true)}
+                                >
+                                    Карта
+                                </Button>
+                            </Box>
+                        </Box>
+                    </DialogTitle>
                     <DialogContent>
                         <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
                             <FormControl sx={{ minWidth: 200 }}>
@@ -435,43 +602,60 @@ function TripDetails() {
                             </Button>
                         </Box>
 
-                        <Grid container spacing={2}>
-                            {nearbyPlaces.map((place, index) => (
-                                <Grid size={12} key={index}>
-                                    <Card>
-                                        <CardContent>
-                                            <Typography variant="h6" gutterBottom>
-                                                {place.name}
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                {place.description}
-                                            </Typography>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                <Rating value={place.rating} readOnly size="small" />
-                                                <Typography variant="body2">
-                                                    ({place.rating})
+                        {showMapView ? (
+                            <Box>
+                                <Box
+                                    ref={mapRef}
+                                    sx={{
+                                        height: 400,
+                                        width: '100%',
+                                        borderRadius: 2,
+                                        border: '1px solid #ddd'
+                                    }}
+                                />
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                    Натисніть на маркер, щоб додати місце до подорожі
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <Grid container spacing={2}>
+                                {nearbyPlaces.map((place, index) => (
+                                    <Grid size={12} key={index}>
+                                        <Card>
+                                            <CardContent>
+                                                <Typography variant="h6" gutterBottom>
+                                                    {place.name}
                                                 </Typography>
-                                            </Box>
-                                            <Typography variant="body2">
-                                                Відкрито: {place.openingTime} - {place.closingTime}
-                                            </Typography>
-                                        </CardContent>
-                                        <CardActions>
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                onClick={() => handleAddPlaceToTrip(place)}
-                                            >
-                                                Додати до подорожі
-                                            </Button>
-                                        </CardActions>
-                                    </Card>
-                                </Grid>
-                            ))}
-                        </Grid>
+                                                <Typography variant="body2" color="text.secondary" gutterBottom>
+                                                    {place.description}
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                                    <Rating value={place.rating} readOnly size="small" />
+                                                    <Typography variant="body2">
+                                                        ({place.rating})
+                                                    </Typography>
+                                                </Box>
+                                                <Typography variant="body2">
+                                                    Відкрито: {place.openingTime} - {place.closingTime}
+                                                </Typography>
+                                            </CardContent>
+                                            <CardActions>
+                                                <Button
+                                                    size="small"
+                                                    variant="contained"
+                                                    onClick={() => handleAddPlaceToTrip(place)}
+                                                >
+                                                    Додати до подорожі
+                                                </Button>
+                                            </CardActions>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={() => setAddPlaceModalOpen(false)}>Закрити</Button>
+                        <Button onClick={handlePlaceModalClose}>Закрити</Button>
                     </DialogActions>
                 </Dialog>
 
