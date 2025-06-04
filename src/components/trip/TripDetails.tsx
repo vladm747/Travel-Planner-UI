@@ -63,6 +63,7 @@ import type { MealBreakRequestDto } from '../../dto/mealBreak/MealBreakRequestDt
 import type { MealBreakResponseDto } from '../../dto/mealBreak/MealBreakResponseDto';
 import type { PlaceResponseDto } from '../../dto/places/PlaceResponseDto';
 import type { GoogleReviewDto } from '../dto/google/GoogleReviewDto';
+import ScheduleDetails from "../schedule/ScheduleDetails.tsx";
 
 // Google Maps types (you may need to install @types/google.maps)
 declare global {
@@ -805,6 +806,7 @@ function TripDetails() {
                         <Button onClick={handleAddMealBreak} variant="contained">Додати прийом їжі</Button>
                     </DialogActions>
                 </Dialog>
+                <ScheduleDetails/>
             </Container>
         </LocalizationProvider>
     );
